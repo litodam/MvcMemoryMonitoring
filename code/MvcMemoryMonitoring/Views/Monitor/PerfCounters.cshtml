@@ -1,0 +1,77 @@
+﻿@{
+    ViewBag.Title = "Performance Counters";
+}
+
+<h2>PerfCounters</h2>
+
+@using System.Diagnostics;
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ASP.NET MVC Memory Monitoring</title>
+</head>
+<body>
+    <div id="wrapper">
+        <div class="content">
+            <header>
+                <h1>ASP.NET MVC Memory Monitoring - @ViewBag.Title</h1>
+                <p>
+                    This page lists all the perf counters available by category and instance.
+                </p>
+            </header>
+            <div>
+                <section id="content">
+                    <article>
+                        <h2>@ViewBag.Title</h2>
+                        <ul>
+                            @{ PerformanceCounterCategory[] perfCats = PerformanceCounterCategory.GetCategories(); }
+                            @foreach (PerformanceCounterCategory category in perfCats.OrderBy(c => c.CategoryName))
+                            {
+                                <li>Category Name: @category.CategoryName
+                                    <ul>
+                                        @{
+                                //Get all instances available for category
+                                string[] instances = category.GetInstanceNames();
+                                if (instances.Length == 0)
+                                {
+                                    //This block will execute when category has no instance.
+                                    //loop all the counters available withing category
+                                    foreach (PerformanceCounter counter in category.GetCounters())
+                                    {
+                                            <li>Counter Name: @counter.CounterName</li>
+                                    }
+                                }
+                                else
+                                {
+                                            <li>Instances: 
+                                            <ul>
+                                                @{//This block will execute when category has one or more instances.
+                                    foreach (string instance in instances)
+                                    {
+                                                    <li>Instance Name: @instance;</li>                                                
+                                    }                                            
+                                                }
+                                            </ul>
+                                            </li>
+                                    //loop all the counters available withing category
+                                    foreach (PerformanceCounter counter in category.GetCounters(instances[0]))
+                                    {
+                                            <li>Counter Name: @counter.CounterName</li>
+                                    }
+                                }
+                                        }
+                                    </ul>
+                                </li>
+                            }
+                        </ul>
+
+                    </article>
+                </section>
+            </div>
+        </div>
+        <footer>
+        </footer>
+    </div>
+</body>
+</html>
+
