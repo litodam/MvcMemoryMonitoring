@@ -26,24 +26,27 @@
                         <h2>Memory and CPU Consumption</h2>
                         <p class="container">
                             <ul>
-                                <li><b>Total Bytes Allocated:</b> @AppDomain.CurrentDomain.MonitoringTotalAllocatedMemorySize Bytes</li>
-                                <li><b>Total MB Allocated:</b> @(AppDomain.CurrentDomain.MonitoringTotalAllocatedMemorySize / 1024 / 1024) MB</li>
-                                <li><b>Total Bytes In Use:</b> @AppDomain.CurrentDomain.MonitoringSurvivedMemorySize Bytes</li>
-                                <li><b>Total MB In Use:</b> @(AppDomain.CurrentDomain.MonitoringSurvivedMemorySize / 1024 / 1024) MB</li>
-                                <li><b>CPU usage:</b> @AppDomain.CurrentDomain.MonitoringTotalProcessorTime.Milliseconds Milliseconds</li>
-                                <li><b>CPU usage:</b> @(AppDomain.CurrentDomain.MonitoringTotalProcessorTime.Milliseconds / 1000) Seconds</li>
+                                <li><b title="Total size, in bytes, of all memory allocations that have been made by the application domain since it was created, without subtracting memory that has been collected.">Total Bytes Allocated:</b> @AppDomain.CurrentDomain.MonitoringTotalAllocatedMemorySize Bytes</li>
+                                <li><b title="Total size of all memory allocations that have been made by the application domain since it was created, without subtracting memory that has been collected.">Total MB Allocated:</b> @(AppDomain.CurrentDomain.MonitoringTotalAllocatedMemorySize / 1024 / 1024) MB</li>
+                                <li><b title="The number of bytes that survived the last full, blocking collection and that are known to be referenced by the current application domain.">Total Bytes In Use:</b> @AppDomain.CurrentDomain.MonitoringSurvivedMemorySize Bytes</li>
+                                <li><b title="The number of bytes that survived the last full, blocking collection and that are known to be referenced by the current application domain.">Total MB In Use:</b> @(AppDomain.CurrentDomain.MonitoringSurvivedMemorySize / 1024 / 1024) MB</li>
+                                <li><b>Cache Effective Private Bytes Limit:</b> @(HttpRuntime.Cache.EffectivePrivateBytesLimit) Bytes</li>
+                                <li><b>Cache Effective Private Bytes Limit in MB:</b> @(HttpRuntime.Cache.EffectivePrivateBytesLimit / 1024 / 1024) MB</li>
+                                <li><b title="Total processor time that has been used by all threads while executing in the current application domain, since the process started.">CPU usage:</b> @AppDomain.CurrentDomain.MonitoringTotalProcessorTime.Milliseconds Milliseconds</li>
+                                <li><b title="Total processor time that has been used by all threads while executing in the current application domain, since the process started.">CPU usage:</b> @(AppDomain.CurrentDomain.MonitoringTotalProcessorTime.Milliseconds / 1000) Seconds</li>
                             </ul>
                         </p>
                     </article>
                     <article>
                         <h2>@ViewBag.Title</h2>
                         <ul>
-                            @{ PerformanceCounterCategory[] perfCats = PerformanceCounterCategory.GetCategories(); }
+                            @{ var perfCats = PerformanceCounterCategory.GetCategories().Where(c => c.CategoryName.StartsWith("ASP.NET Apps", StringComparison.InvariantCultureIgnoreCase)).Union(PerformanceCounterCategory.GetCategories().Where(c => c.CategoryName == "Memory")); }
+
                             @foreach (PerformanceCounterCategory category in perfCats.OrderBy(c => c.CategoryName))
                             {
                                 <li>Category Name: @category.CategoryName
                                     <ul>
-                                        @{
+                                @{
                                 //Get all instances available for category
                                 string[] instances = category.GetInstanceNames();
                                 if (instances.Length == 0)
@@ -52,27 +55,41 @@
                                     //loop all the counters available withing category
                                     foreach (PerformanceCounter counter in category.GetCounters())
                                     {
-                                            <li>Counter Name: @counter.CounterName</li>
+                                        float value;
+                                        using (PerformanceCounter perfCounter = new PerformanceCounter(category.CategoryName, counter.CounterName))
+                                        {
+                                            value = perfCounter.NextValue();
+                                        }
+                                            
+                                            <li>Counter Name: @counter.CounterName   -   Value: @value</li>                                            
                                     }
                                 }
                                 else
                                 {
-                                            <li>Instances: 
-                                            <ul>
-                                                @{//This block will execute when category has one or more instances.
+                                    //This block will execute when category has one or more instances.
                                     foreach (string instance in instances)
                                     {
-                                                    <li>Instance Name: @instance;</li>                                                
-                                    }                                            
-                                                }
-                                            </ul>
+                                            <li>Instance Name: @instance
+                                                <ul>
+
+                                        @{//loop all the counters available withing category
+                                        foreach (PerformanceCounter counter in category.GetCounters(instances[0]))
+                                        {
+                                            float value;
+                                            using (PerformanceCounter perfCounter = new PerformanceCounter(category.CategoryName, counter.CounterName, instances[0]))
+                                            {
+                                                value = perfCounter.NextValue();
+                                            }
+                                        
+                                                <li>Counter Name: @counter.CounterName   -   Value: @value</li>
+                                        }
+                                        }
+                                                </ul>
                                             </li>
-                                    //loop all the counters available withing category
-                                    foreach (PerformanceCounter counter in category.GetCounters(instances[0]))
-                                    {
-                                            <li>Counter Name: @counter.CounterName</li>
                                     }
+
                                 }
+                                
                                         }
                                     </ul>
                                 </li>
