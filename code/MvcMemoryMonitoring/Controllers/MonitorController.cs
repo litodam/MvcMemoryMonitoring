@@ -12,15 +12,9 @@
             return View();
         }
 
-        [OutputCache(Duration = 3000, VaryByParam="*")]
         public ActionResult PerfCounters()
         {
             return View();
-        }
-        
-        public ActionResult OutputCache()
-        {
-            return View();
-        }
+        }        
     }
 }

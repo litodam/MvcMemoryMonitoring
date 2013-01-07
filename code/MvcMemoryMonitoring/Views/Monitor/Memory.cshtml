@@ -30,6 +30,7 @@
                                 <li><b title="Total size of all memory allocations that have been made by the application domain since it was created, without subtracting memory that has been collected.">Total MB Allocated:</b> @(AppDomain.CurrentDomain.MonitoringTotalAllocatedMemorySize / 1024 / 1024) MB</li>
                                 <li><b title="The number of bytes that survived the last full, blocking collection and that are known to be referenced by the current application domain.">Total Bytes In Use:</b> @AppDomain.CurrentDomain.MonitoringSurvivedMemorySize Bytes</li>
                                 <li><b title="The number of bytes that survived the last full, blocking collection and that are known to be referenced by the current application domain.">Total MB In Use:</b> @(AppDomain.CurrentDomain.MonitoringSurvivedMemorySize / 1024 / 1024) MB</li>
+                                <li><b>Number of entries in OutputCache:</b> @GetOutputCacheNumberOfEntries()</li>
                                 <li><b>Cache Effective Private Bytes Limit:</b> @(HttpRuntime.Cache.EffectivePrivateBytesLimit) Bytes</li>
                                 <li><b>Cache Effective Private Bytes Limit in MB:</b> @(HttpRuntime.Cache.EffectivePrivateBytesLimit / 1024 / 1024) MB</li>
                                 <li><b title="Total processor time that has been used by all threads while executing in the current application domain, since the process started.">CPU usage:</b> @AppDomain.CurrentDomain.MonitoringTotalProcessorTime.Milliseconds Milliseconds</li>
@@ -106,3 +107,37 @@
 </body>
 </html>
 
+@using System.Reflection;
+@functions{
+    public int GetOutputCacheNumberOfEntries()
+    {
+        Type runtimeType = typeof(HttpRuntime);
+
+        PropertyInfo ci = runtimeType.GetProperty("CacheInternal", BindingFlags.NonPublic | BindingFlags.Static);
+
+        Object cache = ci.GetValue(ci, new object[0]);
+
+        FieldInfo cachesInfo = cache.GetType().GetField("_caches", BindingFlags.NonPublic | BindingFlags.Instance);
+        object cacheEntries = cachesInfo.GetValue(cache);
+
+        List<object> outputCacheEntries = new List<object>();
+
+        foreach (Object singleCache in cacheEntries as Array)
+        {
+            FieldInfo singleCacheInfo = singleCache.GetType().GetField("_entries", BindingFlags.NonPublic | BindingFlags.Instance);
+            object entries = singleCacheInfo.GetValue(singleCache);
+
+            foreach (System.Collections.DictionaryEntry cacheEntry in entries as System.Collections.Hashtable)
+            {
+                FieldInfo cacheEntryInfo = cacheEntry.Value.GetType().GetField("_value", BindingFlags.NonPublic | BindingFlags.Instance);
+                object value = cacheEntryInfo.GetValue(cacheEntry.Value);
+                if (value.GetType().Name == "CachedRawResponse")
+                {
+                    outputCacheEntries.Add(value);
+                }
+            }
+        }
+
+        return outputCacheEntries.Count;                            
+    }    
+}
