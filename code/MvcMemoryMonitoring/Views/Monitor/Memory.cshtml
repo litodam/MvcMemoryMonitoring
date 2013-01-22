@@ -112,35 +112,58 @@
 
 @using System.Reflection;
 @functions{
-    public int GetOutputCacheNumberOfEntries()
+    public string GetOutputCacheNumberOfEntries()
     {
-        Type runtimeType = typeof(HttpRuntime);
-
-        PropertyInfo ci = runtimeType.GetProperty("CacheInternal", BindingFlags.NonPublic | BindingFlags.Static);
-
-        Object cache = ci.GetValue(ci, new object[0]);
-
-        FieldInfo cachesInfo = cache.GetType().GetField("_caches", BindingFlags.NonPublic | BindingFlags.Instance);
-        object cacheEntries = cachesInfo.GetValue(cache);
-
-        List<object> outputCacheEntries = new List<object>();
-
-        foreach (Object singleCache in cacheEntries as Array)
+        try
         {
-            FieldInfo singleCacheInfo = singleCache.GetType().GetField("_entries", BindingFlags.NonPublic | BindingFlags.Instance);
-            object entries = singleCacheInfo.GetValue(singleCache);
+            Type runtimeType = typeof(HttpRuntime);
 
-            foreach (System.Collections.DictionaryEntry cacheEntry in entries as System.Collections.Hashtable)
+            PropertyInfo ci = runtimeType.GetProperty("CacheInternal", BindingFlags.NonPublic | BindingFlags.Static);
+            if (ci == null)
             {
-                FieldInfo cacheEntryInfo = cacheEntry.Value.GetType().GetField("_value", BindingFlags.NonPublic | BindingFlags.Instance);
-                object value = cacheEntryInfo.GetValue(cacheEntry.Value);
-                if (value.GetType().Name == "CachedRawResponse")
+                return "{Error: static private HttpRuntime.CacheInternal property info (Reflection) not found}";
+            }
+
+            Object cache = ci.GetValue(ci, new object[0]);
+            if (cache == null)
+            {
+                return "{Error: static private HttpRuntime.CacheInternal value returned null}";
+            }
+
+            object cacheEntries = null;
+            FieldInfo cachesInfo = cache.GetType().GetField("_caches", BindingFlags.NonPublic | BindingFlags.Instance);
+            if (cachesInfo == null)
+            {
+                cacheEntries = new object[] { cache };
+            }
+            else
+            {
+                cacheEntries = cachesInfo.GetValue(cache);
+            }
+
+            List<object> outputCacheEntries = new List<object>();
+
+            foreach (Object singleCache in cacheEntries as Array)
+            {
+                FieldInfo singleCacheInfo = singleCache.GetType().GetField("_entries", BindingFlags.NonPublic | BindingFlags.Instance);
+                object entries = singleCacheInfo.GetValue(singleCache);
+
+                foreach (System.Collections.DictionaryEntry cacheEntry in entries as System.Collections.Hashtable)
                 {
-                    outputCacheEntries.Add(value);
+                    FieldInfo cacheEntryInfo = cacheEntry.Value.GetType().GetField("_value", BindingFlags.NonPublic | BindingFlags.Instance);
+                    object value = cacheEntryInfo.GetValue(cacheEntry.Value);
+                    if (value.GetType().Name == "CachedRawResponse")
+                    {
+                        outputCacheEntries.Add(value);
+                    }
                 }
             }
-        }
 
-        return outputCacheEntries.Count;                            
+            return outputCacheEntries.Count.ToString();
+        }
+        catch
+        {
+            return "N/A";
+        }
     }    
 }
